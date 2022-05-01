@@ -138,10 +138,10 @@ void execution(int internet_socket)
     struct sockaddr_storage client_internet_address;
     socklen_t client_internet_address_length = sizeof(client_internet_address);
     int number_of_bytes_received = 0;
-    char buffer[1000];
+    char buffer[1000]; //te ontvangen data
 
-    char numberOfPackets[1000]; //Aantal te ontvangen pakketten
-    int recvPackets = 0;
+    char numberOfPackets[1000]; //Aantal te ontvangen pakketten (char)
+    int recvPackets = 0; //Aantal te ontvangen pakketten (int)
     int packetCounter = 0; //Aantal ontvangen pakketten
 
     FILE *fpCSV = startCSV(); //Maakt of opent een CSV file

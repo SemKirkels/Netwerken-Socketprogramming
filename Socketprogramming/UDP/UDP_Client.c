@@ -118,11 +118,16 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
 {
     //Step 2.1
     int number_of_bytes_send = 0;
-    int numberOfPackets = 0;
-    char buffer[20];
+    int numberOfPackets = 0; //Aantal te verzenden pakketten (int)
+    char buffer[20]; //Volgnummer pakket (char)
 
     printf("Geef het aantal pakketten in: ");
     scanf("%d", &numberOfPackets);
+
+    itoa(numberOfPackets, buffer, 10);
+    printf("Aantal te verzenden pakketten: %s\n", buffer);
+
+    sendto(internet_socket, itoa(numberOfPackets, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
 
     for(int i = 0; i < numberOfPackets; i++)
     {   
@@ -130,7 +135,7 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
         //sendto(internet_socket, Te sturen data, lengte van de data, flags, adres waar de data heen moet, lengte van het adres);
         if(number_of_bytes_send == -1)
         {
-            perror("sendto");
+            perror("Sendto");
         }
     }
 }
