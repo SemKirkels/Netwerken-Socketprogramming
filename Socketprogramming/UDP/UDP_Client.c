@@ -48,6 +48,7 @@
 int initialization(struct sockaddr **internet_address, socklen_t *internet_address_length);
 void execution(int internet_socket, struct sockaddr *internet_address, socklen_t internet_address_length);
 void cleanup(int internet_socket, struct sockaddr *internet_address);
+void delay();
 
 int main(int argc, char *argv[])
 {
@@ -99,7 +100,7 @@ int initialization(struct sockaddr **internet_address, socklen_t *internet_addre
     internet_socket = socket(internet_address_result -> ai_family, internet_address_result -> ai_socktype, internet_address_result -> ai_protocol);
     if(internet_socket == -1) //Geeft een foutmelding als er iets mis is met "internet_socket"
     {
-        perror("socket");
+        perror("Socket");
         freeaddrinfo(internet_address_result);
         exit(2); //Exit code 2 is nu gereserveerd voor een fout in socket
     }
@@ -120,6 +121,7 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
     int number_of_bytes_send = 0;
     int numberOfPackets = 0; //Aantal te verzenden pakketten (int)
     char buffer[20]; //Volgnummer pakket (char)
+    char keuze;
 
     printf("Geef het aantal pakketten in: ");
     scanf("%d", &numberOfPackets);
@@ -127,7 +129,15 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
     itoa(numberOfPackets, buffer, 10);
     printf("Aantal te verzenden pakketten: %s\n", buffer);
 
-    sendto(internet_socket, itoa(numberOfPackets, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
+    printf("Wilt u het aantal te ontvangen pakketten mee sturen? [y/n] ");
+    scanf(" %c", &keuze);
+
+    if(keuze == 'y' || keuze == 'Y')
+    {
+        sendto(internet_socket, itoa(numberOfPackets, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
+    }
+
+    delay();
 
     for(int i = 0; i < numberOfPackets; i++)
     {   
@@ -147,4 +157,28 @@ void cleanup(int internet_socket, struct sockaddr *internet_address)
 
     //Step 3.1
     close(internet_socket);
+}
+
+void delay()
+{
+    printf("##__________________\r");
+    sleep(1);
+    printf("####________________\r");
+    sleep(1);
+    printf("######______________\r");
+    sleep(1);
+    printf("########____________\r");
+    sleep(1);
+    printf("##########__________\r");
+    sleep(1);
+    printf("############________\r");
+    sleep(1);
+    printf("##############______\r");
+    sleep(1);
+    printf("################____\r");
+    sleep(1);
+    printf("##################__\r");
+    sleep(1);
+    printf("####################\r");
+    sleep(1);
 }

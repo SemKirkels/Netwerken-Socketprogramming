@@ -7,6 +7,7 @@
     #include <unistd.h> //for close
     #include <stdlib.h> //for exit
     #include <string.h> //for memset
+    #include <time.h>
 
     void OSInit(void)
     {
@@ -143,12 +144,25 @@ void execution(int internet_socket)
     char numberOfPackets[1000]; //Aantal te ontvangen pakketten (char)
     int recvPackets = 0; //Aantal te ontvangen pakketten (int)
     int packetCounter = 0; //Aantal ontvangen pakketten
+    char keuze;
+    clock_t t;
 
     FILE *fpCSV = startCSV(); //Maakt of opent een CSV file
 
-    recvfrom(internet_socket, numberOfPackets, (sizeof(numberOfPackets)) - 1, 0, (struct sockaddr *) &client_internet_address, &client_internet_address_length); 
-    //Leest het eerste pakket om er achter te komen hoeveel pakketten er gaan volgen
-    recvPackets = atoi(numberOfPackets); //Converteert de string met het aantal te ontvangen pakketten
+    printf("Wordt het aantal te ontvangen pakketten mee gestuurd? [y/n] ");
+    scanf(" %c", &keuze);
+
+    if(keuze == 'y' || keuze == 'Y')
+    {
+        recvfrom(internet_socket, numberOfPackets, (sizeof(numberOfPackets)) - 1, 0, (struct sockaddr *) &client_internet_address, &client_internet_address_length); 
+        //Leest het eerste pakket om er achter te komen hoeveel pakketten er gaan volgen
+        recvPackets = atoi(numberOfPackets); //Converteert de string met het aantal te ontvangen pakketten
+    }
+    else
+    {
+        printf("Geef het aantal te ontvangen pakketten op: ");
+        scanf("%d", &recvPackets);
+    }
 
     printf("Aantal te ontvangen pakketten: %d\n", recvPackets);
 
@@ -161,6 +175,11 @@ void execution(int internet_socket)
         }
         else
         {
+            if(packetCounter == 0)
+            {
+                t = clock(); //Timer start
+                printf("Timer start\n");
+            }
             buffer[number_of_bytes_received] = '\0';
             printf("Received: %s\n", buffer);
             fputs(buffer, fpCSV);
@@ -168,7 +187,9 @@ void execution(int internet_socket)
         }
         packetCounter++;
     }
-    printf("Aantal ontvangen pakketten: %d", packetCounter); //print het aantal ontvangen pakketten
+    t = clock() - t;
+    double timeTaken = ((double)t) / CLOCKS_PER_SEC;
+    printf("Aantal ontvangen pakketten: %d in %f seconden\n", packetCounter, timeTaken); //print het aantal ontvangen pakketten
 }
 
 FILE *startCSV()
