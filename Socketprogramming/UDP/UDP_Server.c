@@ -50,6 +50,7 @@ int initialization();
 void execution(int internet_socket);
 FILE *startCSV(); //Maakt of opent een CSV file
 void cleanup(int internet_socket);
+void calcPacketloss(int ontvangenPakketten, int verwachttePakketten);
 
 int main(int argc, char *argv[])
 {
@@ -98,6 +99,7 @@ int initialization()
     //Step 1.2
     int internet_socket = -1;
     struct addrinfo *internet_address_result_iterator = internet_address_result;
+
     while(internet_address_result_iterator != NULL)
     {
         internet_socket = socket(internet_address_result_iterator -> ai_family, internet_address_result_iterator -> ai_socktype, internet_address_result_iterator -> ai_protocol);
@@ -145,24 +147,35 @@ void execution(int internet_socket)
     int recvPackets = 0; //Aantal te ontvangen pakketten (int)
     int packetCounter = 0; //Aantal ontvangen pakketten
     char keuze;
+    int errorKeuze = 1;
     clock_t t;
 
     FILE *fpCSV = startCSV(); //Maakt of opent een CSV file
 
-    printf("Wordt het aantal te ontvangen pakketten mee gestuurd? [y/n] ");
-    scanf(" %c", &keuze);
 
-    if(keuze == 'y' || keuze == 'Y')
+    while(errorKeuze != 0)
     {
-        recvfrom(internet_socket, numberOfPackets, (sizeof(numberOfPackets)) - 1, 0, (struct sockaddr *) &client_internet_address, &client_internet_address_length); 
-        //Leest het eerste pakket om er achter te komen hoeveel pakketten er gaan volgen
-        recvPackets = atoi(numberOfPackets); //Converteert de string met het aantal te ontvangen pakketten
-    }
-    else
-    {
-        printf("Geef het aantal te ontvangen pakketten op: ");
-        scanf("%d", &recvPackets);
-    }
+        printf("Wordt het aantal te ontvangen pakketten mee gestuurd? [y/n] ");
+        scanf(" %c", &keuze);
+
+        if(keuze == 'y' || keuze == 'Y')
+        {   
+            recvfrom(internet_socket, numberOfPackets, (sizeof(numberOfPackets)) - 1, 0, (struct sockaddr *) &client_internet_address, &client_internet_address_length); 
+            //Leest het eerste pakket om er achter te komen hoeveel pakketten er gaan volgen
+            recvPackets = atoi(numberOfPackets); //Converteert de string met het aantal te ontvangen pakketten
+            break;
+        }
+        else if(keuze == 'n' || keuze == 'N')
+        {
+            printf("Geef het aantal te ontvangen pakketten op: ");
+            scanf("%d", &recvPackets);
+            break;
+        }
+        else
+        {
+            errorKeuze = 1;
+        }
+    }   
 
     printf("Aantal te ontvangen pakketten: %d\n", recvPackets);
 
@@ -182,21 +195,23 @@ void execution(int internet_socket)
             }
             buffer[number_of_bytes_received] = '\0';
             printf("Received: %s\n", buffer);
-            fputs(buffer, fpCSV);
-            fputs(",", fpCSV);
+            fprintf(fpCSV, "%s, \n", buffer);
         }
         packetCounter++;
     }
     t = clock() - t;
     double timeTaken = ((double)t) / CLOCKS_PER_SEC;
     printf("Aantal ontvangen pakketten: %d in %f seconden\n", packetCounter, timeTaken); //print het aantal ontvangen pakketten
+    fprintf(fpCSV, "\n%d Pakketten ontvangen in %.2f seconden.\n", packetCounter, timeTaken); //print het aantal ontvangen pakketten en de tijd in de csv
+
+    calcPacketloss(packetCounter, recvPackets); //Berekend packetloss
 }
 
 FILE *startCSV()
 {
     FILE *fp = NULL; //Maakt een file pointer aan naar de CSV file
 
-    fp = fopen("UDP_CSV.txt", "w"); //Opent de CSV file met write premission
+    fp = fopen("UDP_CSV.csv", "w"); //Opent de CSV file met write premission
 
     if(fp == NULL) //Geeft een foutmelding als het openen van het programma mislukt
     {
@@ -210,4 +225,14 @@ void cleanup(int internet_socket)
 {
     //Step 3.1
     close(internet_socket);
+}
+
+void calcPacketloss(int ontvangenPakketten, int verwachttePakketten)
+{
+    double packetLoss = 0;
+    
+    packetLoss = 1 - (ontvangenPakketten / verwachttePakketten);
+    packetLoss = packetLoss * 100;
+
+    printf("Packetloss: %.2f%%", packetLoss);
 }

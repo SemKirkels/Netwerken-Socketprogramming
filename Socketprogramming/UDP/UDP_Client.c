@@ -161,24 +161,14 @@ void cleanup(int internet_socket, struct sockaddr *internet_address)
 
 void delay()
 {
-    printf("##__________________\r");
+    printf("5\r");
     sleep(1);
-    printf("####________________\r");
+    printf("4\r");
     sleep(1);
-    printf("######______________\r");
+    printf("3\r");
     sleep(1);
-    printf("########____________\r");
+    printf("2\r");
     sleep(1);
-    printf("##########__________\r");
-    sleep(1);
-    printf("############________\r");
-    sleep(1);
-    printf("##############______\r");
-    sleep(1);
-    printf("################____\r");
-    sleep(1);
-    printf("##################__\r");
-    sleep(1);
-    printf("####################\r");
+    printf("1\r");
     sleep(1);
 }
