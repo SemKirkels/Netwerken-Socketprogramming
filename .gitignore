@@ -5,3 +5,5 @@ Socketprogramming/UDP/UDP_Server.exe
 Socketprogramming/UDP/UDP_CSV.csv
 
 todo.txt
+*.exe
+*.csv

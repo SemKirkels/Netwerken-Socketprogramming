@@ -48,7 +48,6 @@
 int initialization(struct sockaddr **internet_address, socklen_t *internet_address_length);
 void execution(int internet_socket, struct sockaddr *internet_address, socklen_t internet_address_length);
 void cleanup(int internet_socket, struct sockaddr *internet_address);
-void delay();
 
 int main(int argc, char *argv[])
 {
@@ -119,14 +118,14 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
 {
     //Step 2.1
     int number_of_bytes_send = 0;
-    int numberOfPackets = 0; //Aantal te verzenden pakketten (int)
+    int numberOfPacketsToSend = 0; //Aantal te verzenden pakketten (int)
     char buffer[20]; //Volgnummer pakket (char)
     char keuze;
 
-    printf("Geef het aantal pakketten in: ");
-    scanf("%d", &numberOfPackets);
+    printf("Geef het aantal pakketten in: ");                               //Vraagt het aantal te verzenden pakketten
+    scanf("%d", &numberOfPacketsToSend);
 
-    itoa(numberOfPackets, buffer, 10);
+    itoa(numberOfPacketsToSend, buffer, 10);                                //Converteerd het aantal te verzenden pakketten van int naar char
     printf("Aantal te verzenden pakketten: %s\n", buffer);
 
     printf("Wilt u het aantal te ontvangen pakketten mee sturen? [y/n] ");
@@ -134,12 +133,10 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
 
     if(keuze == 'y' || keuze == 'Y')
     {
-        sendto(internet_socket, itoa(numberOfPackets, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
+        sendto(internet_socket, itoa(numberOfPacketsToSend, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
     }
 
-    delay();
-
-    for(int i = 0; i < numberOfPackets; i++)
+    for(int i = 0; i < numberOfPacketsToSend; i++)
     {   
         number_of_bytes_send = sendto(internet_socket, itoa(i, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length);
         //sendto(internet_socket, Te sturen data, lengte van de data, flags, adres waar de data heen moet, lengte van het adres);
@@ -157,18 +154,4 @@ void cleanup(int internet_socket, struct sockaddr *internet_address)
 
     //Step 3.1
     close(internet_socket);
-}
-
-void delay()
-{
-    printf("5\r");
-    sleep(1);
-    printf("4\r");
-    sleep(1);
-    printf("3\r");
-    sleep(1);
-    printf("2\r");
-    sleep(1);
-    printf("1\r");
-    sleep(1);
 }
