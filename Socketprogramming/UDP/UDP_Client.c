@@ -84,7 +84,7 @@ int initialization(struct sockaddr **internet_address, socklen_t *internet_addre
     struct addrinfo internet_address_setup; //Stack variable
     struct addrinfo *internet_address_result; //Stack variable
     memset(&internet_address_setup, 0, sizeof(internet_address_setup)); //initialiseert de struct op 0
-    internet_address_setup.ai_family = AF_UNSPEC; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
+    internet_address_setup.ai_family = AF_INET; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
     internet_address_setup.ai_socktype = SOCK_DGRAM; // -> socket type
     int getaddrinfo_return = getaddrinfo("::1", "24042", &internet_address_setup, &internet_address_result); // ::1 --> local host IPV6 formaat --> 127.0.0.1 is hetzelfde 
     //Als getaddrinfo niet gelijk is aan 0 is er een fout in de functie getaddrinfo (vb. IP adres, poort of foute pointer).
