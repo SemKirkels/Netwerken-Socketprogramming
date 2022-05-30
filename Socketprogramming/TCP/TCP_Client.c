@@ -7,6 +7,7 @@
     #include <unistd.h> //for close
     #include <stdlib.h> //for exit
     #include <string.h> //for memset
+    #include <pthread.h>
 
     void OSInit(void)
     {
@@ -46,8 +47,12 @@
 #endif
 
 int initialization();
-void execution(int internet_socket);
+void runThread();
+void *sendThread();
+void *recvThread();
 void cleanup(int internet_socket);
+
+int internet_socket;
 
 int main(int argc, char *argv[])
 {
@@ -57,13 +62,33 @@ int main(int argc, char *argv[])
 
     OSInit();
 
-    int internet_socket = initialization();
+    internet_socket = initialization();
 
     /////////////
     //Execution//
     /////////////
 
-    execution(internet_socket);
+    pthread_t threadSend, threadRecv;
+    /*
+    *Maakt een thread voor Send en Recv
+    */
+    if(pthread_create(&threadSend, NULL, &sendThread, NULL) != 0)
+    {
+        perror("Error create threadSend");
+    }
+    if(pthread_create(&threadRecv, NULL, &recvThread, NULL) != 0)
+    {
+        perror("Error create threadRecv");
+    }
+
+    if(pthread_join(threadSend, NULL) != 0)
+    {
+        perror("Error join threadRecv");
+    }
+    if(pthread_join(threadRecv, NULL) != 0)
+    {
+        perror("Error join threadRecv");
+    }
 
     ///////////
     //Cleanup//
@@ -82,9 +107,9 @@ int initialization()
     struct addrinfo internet_address_setup; //Stack variable
     struct addrinfo *internet_address_result; //Stack variable
     memset(&internet_address_setup, 0, sizeof(internet_address_setup)); //initialiseert de struct op 0
-    internet_address_setup.ai_family = AF_UNSPEC; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
+    internet_address_setup.ai_family = AF_INET; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
     internet_address_setup.ai_socktype = SOCK_STREAM; // -> socket type -> (UDP -> DGRAM) / (TCP -> STRAM)
-    int getaddrinfo_return = getaddrinfo("::1", "24042", &internet_address_setup, &internet_address_result);
+    int getaddrinfo_return = getaddrinfo("127.0.0.1", "24042", &internet_address_setup, &internet_address_result);
     //Als getaddrinfo niet gelijk is aan 0 is er een fout in de functie getaddrinfo (vb. IP adres, poort of foute pointer).
     if(getaddrinfo_return != 0) //Geeft een foutmelding als er iets mis is met "getaddrinfo"
     {
@@ -104,7 +129,6 @@ int initialization()
         }
         else
         {
-            //Step 1.3 UDP bind -> TCP connect
             int connect_return = connect(internet_socket, internet_address_result_iterator -> ai_addr, internet_address_result_iterator -> ai_addrlen);
             if(connect_return == -1)
             {
@@ -130,37 +154,43 @@ int initialization()
     return internet_socket;
 }
 
-void execution(int internet_socket)
+void *sendThread()
 {
-    char message[1000];
-
-    printf("Geef een bericht in: ");
-    scanf("%s", message);
-    //Step 2.1
-    int number_of_bytes_send = 0;
-    number_of_bytes_send = send(internet_socket, message, 16, 0);
-    //sendto(internet_socket, Te sturen data, lengte van de data, flags
-    if(number_of_bytes_send == -1)
+    while(1)
     {
-        perror("Send");
+        int packetLength = 0;
+        char packetData[255];
+
+        gets(packetData);
+
+        packetLength = strlen(packetData);
+        packetData[packetLength] = '\n';
+
+        int number_of_bytes_send = send(internet_socket, packetData, packetLength, 0);
+        if(number_of_bytes_send == -1)
+        {
+            perror("Send");
+        }
     }
+}
 
-    //Step 2.2
-    int number_of_bytes_received = 0;
-    char buffer[1000];
-    number_of_bytes_received = recv(internet_socket, buffer, (sizeof(buffer)) - 1, 0);
-    if(number_of_bytes_received == -1)
+void *recvThread()
+{
+    while(1)
     {
-        perror("Recv");
+        char buffer[1000];
+        int number_of_bytes_recv = recv(internet_socket, buffer, sizeof(buffer) -1, 0);
+
+        if(number_of_bytes_recv == -1)
+        {
+            perror("Recv");
+        }
+        else
+        {
+            buffer[number_of_bytes_recv] = '\0';
+            printf("Received: %s\n", buffer);
+        }
     }
-    else //De else is nodig omdat er anders op de plaats van de fout -1 een \0 wordt gezet
-    {
-        // Ontvangt data via internet socket met een maximale grootte van buffer - 1 -> 999
-        buffer[number_of_bytes_received] = '\0'; // -> laatste teken in de buffer is \0
-        printf("Received: %s\n", buffer);
-    }  
-
-    //Bij de server zijn Step 2.1 en 2.2 omgewisseld -> eerst recv dan send (client -> send dan recv)
 }
 
 void cleanup(int internet_socket)
@@ -176,4 +206,3 @@ void cleanup(int internet_socket)
     close(internet_socket);
 }
 
-/* TCP client verschilt niet veel van een UDP server */

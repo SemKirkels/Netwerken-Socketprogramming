@@ -45,10 +45,19 @@
 
 #endif
 
+char buffer[255];   //Groote van een bericht max 255 karakters
+int lengthOfBuffer = 0;
+char messageHistory[16 * 255]; //Grootte van de laatste 16 berichten -> 16 * 255
+
+int initHttpRequest(); //initialize HTTP request
+void exHttpRequest(); //executes HTTP request
+void cleanupHttpRequest();
+
 int initialization();
 int connection(int internet_socket);
 void execution(int internet_socket);
 void cleanup(int internet_socket, int client_internet_socket);
+
 
 int main(int argc, char *argv[])
 {
@@ -57,14 +66,15 @@ int main(int argc, char *argv[])
     //////////////////
 
     OSInit();
-
-    int internet_socket = initialization();
+    int internet_socket = initHttpRequest();
+    exHttpRequest(internet_socket);
+    cleanupHttpRequest(internet_socket);
+   
 
     //////////////
     //Connection//
     //////////////
 
-    int client_internet_socket = connection(internet_socket);
 
     /////////////
     //Execution//
@@ -83,16 +93,19 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int initialization()
+//////////////////////
+//Start HTTP Request//
+//////////////////////
+
+int initHttpRequest()
 {
     //Step 1.1
     struct addrinfo internet_address_setup; //Stack variable
     struct addrinfo *internet_address_result; //Stack variable
     memset(&internet_address_setup, 0, sizeof(internet_address_setup)); //initialiseert de struct op 0
-    internet_address_setup.ai_family = AF_UNSPEC; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
-    internet_address_setup.ai_socktype = SOCK_STREAM; // -> socket type -> (UDP -> DGRAM) / (TCP -> STRAM)
-    internet_address_setup.ai_flags = AI_PASSIVE; //AI_PASSIVE -> Server
-    int getaddrinfo_return = getaddrinfo(NULL, "24042", &internet_address_setup, &internet_address_result); //NULL -> de server kan van elk ip adres worden benaderd -> NULL is server
+    internet_address_setup.ai_family = AF_INET; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
+    internet_address_setup.ai_socktype = SOCK_STREAM; // -> socket type -> (UDP -> DGRAM) / (TCP -> STREAM)
+    int getaddrinfo_return = getaddrinfo("student.pxl-ea-ict.be", "80", &internet_address_setup, &internet_address_result);
     //Als getaddrinfo niet gelijk is aan 0 is er een fout in de functie getaddrinfo (vb. IP adres, poort of foute pointer).
     if(getaddrinfo_return != 0) //Geeft een foutmelding als er iets mis is met "getaddrinfo"
     {
@@ -113,25 +126,15 @@ int initialization()
         else
         {
             //Step 1.3 
-            int bind_return = bind(internet_socket, internet_address_result_iterator -> ai_addr, internet_address_result_iterator -> ai_addrlen);
+            int bind_return = connect(internet_socket, internet_address_result_iterator -> ai_addr, internet_address_result_iterator -> ai_addrlen);
             if(bind_return == -1)
             {
-                perror("Bind");
+                perror("Connect");
                 close(internet_socket);
             }
             else
             {
-                //Step 1.4
-                int listen_return = listen(internet_socket, 1);
-                if(listen_return == -1)
-                {
-                    perror("Listen");
-                    close(internet_socket);
-                }
-                else
-                {
-                    break;
-                }
+                break;
             }
         }
         internet_address_result_iterator = internet_address_result_iterator -> ai_next;
@@ -147,6 +150,41 @@ int initialization()
 
     return internet_socket;
 }
+
+void exHttpRequest(int internet_socket)
+{
+    char buffer[1000];
+
+    int number_of_bytes_send = send(internet_socket, "Get /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n", strlen("Get /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n"), 0);
+    if(number_of_bytes_send == -1)
+    {
+        perror("Send");
+    }
+
+    int number_of_bytes_received = recv(internet_socket, buffer, sizeof(buffer) - 1, 0);
+    if(number_of_bytes_received == -1)
+    {
+        perror("Recv");
+    }
+    else
+    {
+        buffer[number_of_bytes_received] = '\0';
+        printf("%s\n", buffer);
+    }
+}
+
+void cleanupHttpRequest();
+{
+    if(shutdown(internet_socket, SD_SEND) == -1)
+    {
+        perror("Shutdown HTTP Request");
+    }
+    close(internet_socket);
+}
+
+//////////////////////
+//Einde HTTP Request//
+//////////////////////
 
 int connection(int internet_socket)
 {

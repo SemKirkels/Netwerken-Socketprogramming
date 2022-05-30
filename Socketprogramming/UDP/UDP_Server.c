@@ -290,6 +290,10 @@ void execution(int internet_socket)
             {
                 //Doe niets
             }
+
+            avg_X[0] += tempAccelerometer[0];
+            avg_Y[0] += tempAccelerometer[1];
+            avg_Z[0] += tempAccelerometer[2];
             
             /////////////////////
             //Parsing gyroscope//
@@ -334,6 +338,10 @@ void execution(int internet_socket)
                 //Doe niets
             }
 
+            avg_X[1] += tempGyroscope[0];
+            avg_Y[1] += tempGyroscope[1];
+            avg_Z[1] += tempGyroscope[2];
+
             //////////////////////////
             //Parsing magnetic field//
             //////////////////////////
@@ -376,24 +384,25 @@ void execution(int internet_socket)
             {
                 //Doe niets
             }
+
+            avg_X[2] += tempMagnetic[0];
+            avg_Y[2] += tempMagnetic[1];
+            avg_Z[2] += tempMagnetic[2];
         }
         packetCounter++;
     }
     t = clock() - t;
     double timeTaken = ((double)t) / CLOCKS_PER_SEC;
 
-    printf("Aantal ontvangen pakketten: %d in %f seconden\n", packetCounter, timeTaken);                                            //print het aantal ontvangen pakketten
-    fprintf(fpStats, "\n%d Pakketten van de %d ontvangen in %.2f seconden.\n", packetCounter, packetsToReceive, timeTaken);         //print het aantal ontvangen pakketten en de tijd in de csv
-    
     //Accelerometer
 
     fprintf(fpStats, "\n Accelerometer X min: %lf\n", min_X[0]);
     fprintf(fpStats, "\n Accelerometer y min: %lf\n", min_Y[0]);
     fprintf(fpStats, "\n Accelerometer z min: %lf\n", min_Z[0]);
 
-    fprintf(fpStats, "\n Accelerometer X avg: %lf\n", avg_X[0]);
-    fprintf(fpStats, "\n Accelerometer y avg: %lf\n", avg_Y[0]);
-    fprintf(fpStats, "\n Accelerometer z avg: %lf\n", avg_Z[0]);
+    fprintf(fpStats, "\n Accelerometer X avg: %lf\n", avg_X[0] / packetCounter);
+    fprintf(fpStats, "\n Accelerometer y avg: %lf\n", avg_Y[0] / packetCounter);
+    fprintf(fpStats, "\n Accelerometer z avg: %lf\n", avg_Z[0] / packetCounter);
 
     fprintf(fpStats, "\n Accelerometer X max: %lf\n", max_X[0]);
     fprintf(fpStats, "\n Accelerometer y max: %lf\n", max_Y[0]);
@@ -405,9 +414,9 @@ void execution(int internet_socket)
     fprintf(fpStats, "\n Gyroscope y min: %lf\n", min_Y[1]);
     fprintf(fpStats, "\n Gyroscope z min: %lf\n", min_Z[1]);
 
-    fprintf(fpStats, "\n Gyroscope X avg: %lf\n", avg_X[1]);
-    fprintf(fpStats, "\n Gyroscope y avg: %lf\n", avg_Y[1]);
-    fprintf(fpStats, "\n Gyroscope z avg: %lf\n", avg_Z[1]);
+    fprintf(fpStats, "\n Gyroscope X avg: %lf\n", avg_X[1] / packetCounter);
+    fprintf(fpStats, "\n Gyroscope y avg: %lf\n", avg_Y[1] / packetCounter);
+    fprintf(fpStats, "\n Gyroscope z avg: %lf\n", avg_Z[1] / packetCounter);
 
     fprintf(fpStats, "\n Gyroscope X max: %lf\n", max_X[1]);
     fprintf(fpStats, "\n Gyroscope y max: %lf\n", max_Y[1]);
@@ -419,14 +428,16 @@ void execution(int internet_socket)
     fprintf(fpStats, "\n Magnetic field y min: %lf\n", min_Y[2]);
     fprintf(fpStats, "\n Magnetic field z min: %lf\n", min_Z[2]);
 
-    fprintf(fpStats, "\n Magnetic field X avg: %lf\n", avg_X[2]);
-    fprintf(fpStats, "\n Magnetic field y avg: %lf\n", avg_Y[2]);
-    fprintf(fpStats, "\n Magnetic field z avg: %lf\n", avg_Z[2]);
+    fprintf(fpStats, "\n Magnetic field X avg: %lf\n", avg_X[2] / packetCounter);
+    fprintf(fpStats, "\n Magnetic field y avg: %lf\n", avg_Y[2] / packetCounter);
+    fprintf(fpStats, "\n Magnetic field z avg: %lf\n", avg_Z[2] / packetCounter);
 
     fprintf(fpStats, "\n Magnetic field X max: %lf\n", max_X[2]);
     fprintf(fpStats, "\n Magnetic field y max: %lf\n", max_Y[2]);
     fprintf(fpStats, "\n Magnetic field z max: %lf\n", max_Z[2]);
 
+    printf("Aantal ontvangen pakketten: %d in %f seconden\n", packetCounter, timeTaken);                                            //print het aantal ontvangen pakketten
+    fprintf(fpStats, "\n%d Pakketten van de %d ontvangen in %.2f seconden.\n", packetCounter, packetsToReceive, timeTaken);         //print het aantal ontvangen pakketten en de tijd in de csv
     calcPacketloss(packetCounter, packetsToReceive, fpStats);                                                                       //Berekend packetloss
 }
 
