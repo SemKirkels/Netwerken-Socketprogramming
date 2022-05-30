@@ -45,48 +45,124 @@
 
 #endif
 
-char buffer[255];   //Groote van een bericht max 255 karakters
-int lengthOfBuffer = 0;
-char messageHistory[16 * 255]; //Grootte van de laatste 16 berichten -> 16 * 255
+#define PORT "24045" 
 
 int initHttpRequest(); //initialize HTTP request
 void exHttpRequest(); //executes HTTP request
 void cleanupHttpRequest();
 
-int initialization();
-int connection(int internet_socket);
-void execution(int internet_socket);
-void cleanup(int internet_socket, int client_internet_socket);
-
-
 int main(int argc, char *argv[])
 {
-    //////////////////
-    //Initialization//
-    //////////////////
+
+    ////////////////
+    //HTTP Request//
+    ////////////////
 
     OSInit();
     int internet_socket = initHttpRequest();
     exHttpRequest(internet_socket);
     cleanupHttpRequest(internet_socket);
-   
+    char messageHistory[16 * 255]; //Grootte van de laatste 16 berichten -> 16 * 255
 
-    //////////////
-    //Connection//
-    //////////////
+    fd_set master;
+    fd_set read_fds;
+    int fdmax;
 
+    int listener;
+    int newfd;
+    struct sockaddr_storage remoteaddr;
+    socklen_t addrlen;
 
-    /////////////
-    //Execution//
-    /////////////
+    char buffer[255];   //Groote van een bericht max 255 karakters
+    int lengthOfBuffer = 0;
 
-    execution(client_internet_socket);
+    char remoteIP[INET6_ADDRSTRLEN];
+
+    int yes = 1;
+    int i, j, rv;
+
+    struct addrinfo hints, *ai, *p;
+
+    FD_ZERO(&master);
+    FD_ZERO(&read_fds);
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    if((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0)
+    {
+        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+        exit(1);
+    }
+
+    for(p = ai; p != NULL; p = p->ai_next)
+    {
+        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if(listener < 0)
+        {
+            continue;
+        }
+
+        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+        if(bind(listener, p->ai_addr, p->ai_addrlen) < 0)
+        {
+            close(listener);
+            continue;
+        }
+        break;
+    }
+
+    if(p == NULL)
+    {
+        fprintf(stderr, "Selectserver: failed to bind\n");
+        exit(2);
+    }
+
+    freeaddrinfo(ai);
+
+    puts("Binding sucessful!");
+
+    if(listen(listener, 10) == -1)
+    {
+        perror("Listen");
+        exit(3);
+    }
+
+    FD_SET(listener, &master);
+
+    fdmax = listener;
+
+    while(1)
+    {
+        read_fds = master;
+        if(select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)
+        {
+            perror("Select");
+        }
+
+        for(i = 0; i <= fdmax; i++)
+        {
+            if(FD_ISSET(i, &read_fds))
+            {
+                if(i == listener)
+                {
+                    addrlen = sizeof(remoteaddr);
+                    newfd = accept(listener, (struct sockaddr *) &remoteaddr, &addrlen);
+
+                    if(newfd == -1)
+                    {
+                        
+                    }
+                }
+            }
+        }
+    }
 
     ///////////
     //Cleanup//
     ///////////
-
-    cleanup(internet_socket, client_internet_socket);
 
     OSCleanup();
 
@@ -185,61 +261,3 @@ void cleanupHttpRequest();
 //////////////////////
 //Einde HTTP Request//
 //////////////////////
-
-int connection(int internet_socket)
-{
-    //Step 2.1
-    struct sockaddr_storage client_internet_address;
-    socklen_t client_internet_address_length = sizeof(client_internet_address);
-    int client_socket = accept(internet_socket, (struct sockaddr *) &client_internet_address, &client_internet_address_length);
-    if(client_socket == -1)
-    {
-        perror("Accept");
-        close(internet_socket);
-        exit(3);
-    }
-    return client_socket;
-}
-
-void execution(int internet_socket)
-{
-    //Step 3.1
-    int number_of_bytes_received = 0;
-    char buffer[1000];
-    number_of_bytes_received = recv(internet_socket, buffer, (sizeof(buffer)) - 1, 0);
-    if(number_of_bytes_received == -1)
-    {
-        perror("Recv");
-    }
-    else //De else is nodig omdat er anders op de plaats van de fout -1 een \0 wordt gezet
-    {
-        // Ontvangt data via internet socket met een maximale grootte van buffer - 1 -> 999
-        buffer[number_of_bytes_received] = '\0'; // -> laatste teken in de buffer is \0
-        printf("Received: %s\n", buffer);
-    }  
-
-    //Step 3.2
-    int number_of_bytes_send = 0;
-    number_of_bytes_send = send(internet_socket, "Hello TCP world!", 16, 0);
-    //sendto(internet_socket, Te sturen data, lengte van de data, flags
-    if(number_of_bytes_send == -1)
-    {
-        perror("Send");
-    }
-
-    //Bij de server zijn Step 2.1 en 2.2 omgewisseld -> eerst recv dan send (client -> send dan recv)
-}
-
-void cleanup(int internet_socket, int client_internet_socket)
-{
-    //Step 4.2
-    int shutdown_return = shutdown(client_internet_socket, SD_RECEIVE);
-    if(shutdown_return == -1)
-    {
-        perror("Shutdown");
-    }
-
-    //Step 4.1
-    close(internet_socket);
-    close(client_internet_socket);
-}
