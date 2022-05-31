@@ -45,54 +45,49 @@
 
 #endif
 
-#define PORT "24045" 
+#define PORT "24042" 
 
-int initHttpRequest(); //initialize HTTP request
-void exHttpRequest(); //executes HTTP request
-void cleanupHttpRequest();
+char bufferMessage[255];
+char historyMessages[16 * 255]; //16 * 255 omdat er 16 berichten van maximaal 255 bytes worden gehaald van de server
+int lengthOfBuffer;
+
+void *get_in_addr(struct sockaddr *sa);
+
+int init();
+void messageHistory();
+void execution(int internet_socket);
+void exMessage();
+void cleanup(int internet_socket);
 
 int main(int argc, char *argv[])
 {
-
-    ////////////////
-    //HTTP Request//
-    ////////////////
-
     OSInit();
-    int internet_socket = initHttpRequest();
-    exHttpRequest(internet_socket);
-    cleanupHttpRequest(internet_socket);
-    char messageHistory[16 * 255]; //Grootte van de laatste 16 berichten -> 16 * 255
+    messageHistory();
 
+    /*
+    Onderstaande code komt uit een Youtube video
+    */
     fd_set master;
     fd_set read_fds;
     int fdmax;
-
     int listener;
     int newfd;
     struct sockaddr_storage remoteaddr;
     socklen_t addrlen;
-
-    char buffer[255];   //Groote van een bericht max 255 karakters
-    int lengthOfBuffer = 0;
-
     char remoteIP[INET6_ADDRSTRLEN];
-
     int yes = 1;
     int i, j, rv;
-
     struct addrinfo hints, *ai, *p;
-
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
-
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
+    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
+
     if((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0)
     {
-        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+        fprintf(stderr, "Selectserver: %s\n", gai_strerror(rv));
         exit(1);
     }
 
@@ -140,6 +135,7 @@ int main(int argc, char *argv[])
         if(select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)
         {
             perror("Select");
+            exit(4);
         }
 
         for(i = 0; i <= fdmax; i++)
@@ -150,15 +146,85 @@ int main(int argc, char *argv[])
                 {
                     addrlen = sizeof(remoteaddr);
                     newfd = accept(listener, (struct sockaddr *) &remoteaddr, &addrlen);
+                    send(newfd, historyMessages, strlen(historyMessages + 1), 0); //Verstuurt de laatste 16 berichten naar de niewe gebruiker
 
                     if(newfd == -1)
                     {
-                        
+                        perror("Accept");
+                    }
+                    else
+                    {
+                        FD_SET(newfd, &master);
+                        if(newfd > fdmax)
+                        {
+                            fdmax = newfd;
+                        }
+                        printf("Selectserver: Nieuwe connectie van IP: [ %s ] op" "socket [ %d] \n", inet_ntop(remoteaddr.ss_family,get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), newfd);
+                        char messageNewUser[256];
+                        sprintf(messageNewUser, "Nieuwe verbinding ");
+                        strcat(messageNewUser, inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr*) &remoteaddr), remoteIP, INET6_ADDRSTRLEN));
+                        strcat(messageNewUser, "op socket ");
+
+                        char newfdString[4];
+                        itoa(newfd, newfdString, 10);
+                        strcat(messageNewUser, newfdString);
+                        messageNewUser[strlen(messageNewUser)] = '\r';
+
+                        for(j = 0; j <= fdmax; j++)
+                        {
+                            if(FD_ISSET(j, &master))
+                            {
+                                if(j != listener && j != i)
+                                {
+                                    if(send(j, messageNewUser, lengthOfBuffer, 0) == -1)
+                                    {
+                                        perror("Send");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    lengthOfBuffer = recv(i, bufferMessage, sizeof(bufferMessage), 0);
+                    if(lengthOfBuffer <= 0)
+                    {
+                        if(lengthOfBuffer == 0)
+                        {
+                            printf("Selectserver: F in chatbox socket [ %d ] heeft de chat verlaten\n", i);
+                        }
+                        else
+                        {
+                            perror("Recv");
+                        }
+                        close(i);
+                        FD_CLR(i, &master);
+                    }
+                    else
+                    {
+                        for(j = 0; j <= fdmax; j++)
+                        {
+                            if(FD_ISSET(j, &master))
+                            {
+                                if(j != listener && j != i)
+                                {
+                                    if(send(j, bufferMessage, lengthOfBuffer, 0) == -1)
+                                    {
+                                        perror("Send");
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+    /*
+    Einde code Youtube video
+    */
 
     ///////////
     //Cleanup//
@@ -169,41 +235,50 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-//////////////////////
-//Start HTTP Request//
-//////////////////////
-
-int initHttpRequest()
+/////////////////////////////////////
+//Start functies code Youtube video//
+/////////////////////////////////////
+void *get_in_addr(struct sockaddr *sa)
 {
-    //Step 1.1
-    struct addrinfo internet_address_setup; //Stack variable
-    struct addrinfo *internet_address_result; //Stack variable
-    memset(&internet_address_setup, 0, sizeof(internet_address_setup)); //initialiseert de struct op 0
-    internet_address_setup.ai_family = AF_INET; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
-    internet_address_setup.ai_socktype = SOCK_STREAM; // -> socket type -> (UDP -> DGRAM) / (TCP -> STREAM)
+    if(sa->sa_family == AF_INET)
+    {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+////////////////////////////
+//Einde code Youtube video//
+////////////////////////////
+
+///////////////////
+//Code uit de les//
+///////////////////
+int init()
+{
+    struct addrinfo internet_address_setup;
+    struct addrinfo *internet_address_result;
+    memset(&internet_address_setup, 0 , sizeof(internet_address_setup));
+    internet_address_setup.ai_family = AF_INET;
+    internet_address_setup.ai_socktype = SOCK_STREAM;
     int getaddrinfo_return = getaddrinfo("student.pxl-ea-ict.be", "80", &internet_address_setup, &internet_address_result);
-    //Als getaddrinfo niet gelijk is aan 0 is er een fout in de functie getaddrinfo (vb. IP adres, poort of foute pointer).
-    if(getaddrinfo_return != 0) //Geeft een foutmelding als er iets mis is met "getaddrinfo"
+    if(getaddrinfo_return != 0)
     {
         fprintf(stderr, "Getaddrinfo: %s\n", gai_strerror(getaddrinfo_return));
-        exit(1); //Exit code 1 is nu gereserveerd voor een fout in de getaddrinfo
+        exit(1);
     }
-    
     int internet_socket = -1;
     struct addrinfo *internet_address_result_iterator = internet_address_result;
     while(internet_address_result_iterator != NULL)
     {
-        //Step 1.2
-        internet_socket = socket(internet_address_result_iterator -> ai_family, internet_address_result_iterator -> ai_socktype, internet_address_result_iterator -> ai_protocol);
-        if(internet_socket == -1) //Geeft een foutmelding als er iets mis is met "internet_socket"
+        internet_socket = socket(internet_address_result_iterator->ai_family, internet_address_result_iterator->ai_socktype, internet_address_result_iterator->ai_protocol);
+        if(internet_socket == -1)
         {
             perror("Socket");
         }
         else
         {
-            //Step 1.3 
-            int bind_return = connect(internet_socket, internet_address_result_iterator -> ai_addr, internet_address_result_iterator -> ai_addrlen);
-            if(bind_return == -1)
+            int connect_return = connect(internet_socket, internet_address_result_iterator->ai_addr, internet_address_result_iterator->ai_addrlen);
+            if(connect_return == -1)
             {
                 perror("Connect");
                 close(internet_socket);
@@ -213,51 +288,74 @@ int initHttpRequest()
                 break;
             }
         }
-        internet_address_result_iterator = internet_address_result_iterator -> ai_next;
+        internet_address_result_iterator = internet_address_result_iterator->ai_next;
     }
-    
     freeaddrinfo(internet_address_result);
 
-    if(internet_socket == -1) //Geeft een foutmelding als er iets mis is met "internet_socket"
+    if(internet_socket == -1)
     {
-        fprintf(stderr, "Socket: no valid socket address found\n");
-        exit(2); //Exit code 2 is nu gereserveerd voor een fout in socket
+        fprintf(stderr, "Socket, no valid socket address found\n");
+        exit(2);
     }
-
     return internet_socket;
 }
 
-void exHttpRequest(int internet_socket)
+void execution(int internet_socket)
 {
-    char buffer[1000];
-
-    int number_of_bytes_send = send(internet_socket, "Get /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n", strlen("Get /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n"), 0);
+    int strlength = strlen("GET /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n");
+    printf("Test strlen: %d\n", strlength);
+    int number_of_bytes_send = send(internet_socket, "GET /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n", strlength + 1, 0);
     if(number_of_bytes_send == -1)
     {
         perror("Send");
     }
 
-    int number_of_bytes_received = recv(internet_socket, buffer, sizeof(buffer) - 1, 0);
-    if(number_of_bytes_received == -1)
+    char buffer[1000];
+    int recvBytes = recv(internet_socket, buffer, sizeof (buffer) - 1, 0);
+    if(recvBytes == -1)
     {
         perror("Recv");
     }
     else
     {
-        buffer[number_of_bytes_received] = '\0';
-        printf("%s\n", buffer);
+        buffer[recvBytes] = '\0';
+        printf("Received1:\n%s\n", buffer);
+        sprintf(historyMessages, "\n%s \n\n", buffer);
     }
 }
 
-void cleanupHttpRequest();
+void cleanup(int internet_socket)
 {
     if(shutdown(internet_socket, SD_SEND) == -1)
     {
-        perror("Shutdown HTTP Request");
+        perror("Shutdown");
     }
+    
     close(internet_socket);
 }
+/////////////////////////
+//Einde code uit de les//
+/////////////////////////
 
-//////////////////////
-//Einde HTTP Request//
-//////////////////////
+void messageHistory()
+{
+    int internet_socket = init();
+    execution(internet_socket);
+    cleanup(internet_socket);
+}
+
+void exMessage()
+{
+    bufferMessage[lengthOfBuffer] = '\0';
+    char message[255];
+
+    for(int i = 0, j; bufferMessage[i] != '\0'; ++i)
+    {
+
+        for(j = i; bufferMessage[j] != '\0'; ++j)
+        {
+            bufferMessage[j] = message[j + 1];
+        }
+        message[j] = '\0';
+    }
+}
