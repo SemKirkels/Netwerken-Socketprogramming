@@ -84,7 +84,7 @@ int initialization(struct sockaddr **internet_address, socklen_t *internet_addre
     struct addrinfo internet_address_setup; //Stack variable
     struct addrinfo *internet_address_result; //Stack variable
     memset(&internet_address_setup, 0, sizeof(internet_address_setup)); //initialiseert de struct op 0
-    internet_address_setup.ai_family = AF_UNSPEC; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
+    internet_address_setup.ai_family = AF_INET; //ai_family -> ipv4 of ipv6 --> geen waarde meegegeven
     internet_address_setup.ai_socktype = SOCK_DGRAM; // -> socket type
     int getaddrinfo_return = getaddrinfo("::1", "24042", &internet_address_setup, &internet_address_result); // ::1 --> local host IPV6 formaat --> 127.0.0.1 is hetzelfde 
     //Als getaddrinfo niet gelijk is aan 0 is er een fout in de functie getaddrinfo (vb. IP adres, poort of foute pointer).
@@ -99,7 +99,7 @@ int initialization(struct sockaddr **internet_address, socklen_t *internet_addre
     internet_socket = socket(internet_address_result -> ai_family, internet_address_result -> ai_socktype, internet_address_result -> ai_protocol);
     if(internet_socket == -1) //Geeft een foutmelding als er iets mis is met "internet_socket"
     {
-        perror("socket");
+        perror("Socket");
         freeaddrinfo(internet_address_result);
         exit(2); //Exit code 2 is nu gereserveerd voor een fout in socket
     }
@@ -118,19 +118,31 @@ void execution(int internet_socket, struct sockaddr *internet_address, socklen_t
 {
     //Step 2.1
     int number_of_bytes_send = 0;
-    int numberOfPackets = 0;
-    char buffer[20];
+    int numberOfPacketsToSend = 0; //Aantal te verzenden pakketten (int)
+    char buffer[20]; //Volgnummer pakket (char)
+    char keuze;
 
-    printf("Geef het aantal pakketten in: ");
-    scanf("%d", &numberOfPackets);
+    printf("Geef het aantal pakketten in: ");                               //Vraagt het aantal te verzenden pakketten
+    scanf("%d", &numberOfPacketsToSend);
 
-    for(int i = 0; i < numberOfPackets; i++)
+    itoa(numberOfPacketsToSend, buffer, 10);                                //Converteerd het aantal te verzenden pakketten van int naar char
+    printf("Aantal te verzenden pakketten: %s\n", buffer);
+
+    printf("Wilt u het aantal te ontvangen pakketten mee sturen? [y/n] ");
+    scanf(" %c", &keuze);
+
+    if(keuze == 'y' || keuze == 'Y')
+    {
+        sendto(internet_socket, itoa(numberOfPacketsToSend, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length); //Verzend aantal te ontvangen pakketten
+    }
+
+    for(int i = 0; i < numberOfPacketsToSend; i++)
     {   
         number_of_bytes_send = sendto(internet_socket, itoa(i, buffer, 10), strlen(buffer), 0, internet_address, internet_address_length);
         //sendto(internet_socket, Te sturen data, lengte van de data, flags, adres waar de data heen moet, lengte van het adres);
         if(number_of_bytes_send == -1)
         {
-            perror("sendto");
+            perror("Sendto");
         }
     }
 }
