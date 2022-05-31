@@ -56,7 +56,6 @@ void *get_in_addr(struct sockaddr *sa);
 int init();
 void messageHistory();
 void execution(int internet_socket);
-void exMessage();
 void cleanup(int internet_socket);
 
 int main(int argc, char *argv[])
@@ -253,6 +252,9 @@ void *get_in_addr(struct sockaddr *sa)
 ///////////////////
 //Code uit de les//
 ///////////////////
+/*
+*Functie maakt een connectie aan met de server student.pxl-ea-ict.be
+*/
 int init()
 {
     struct addrinfo internet_address_setup;
@@ -300,6 +302,10 @@ int init()
     return internet_socket;
 }
 
+/*
+* Vraagt de laatste 16 berichten aan de server. Deze worden vervolgens geprint in de terminal
+*/
+
 void execution(int internet_socket)
 {
     int strlength = strlen("GET /history.php?i=12102824 HTTP/1.0\r\nHost: student.pxl-ea-ict.be\r\n\r\n");
@@ -319,7 +325,7 @@ void execution(int internet_socket)
     else
     {
         buffer[recvBytes] = '\0';
-        printf("Received1:\n%s\n", buffer);
+        printf("Received from HTTP server:\n%s\n", buffer);
         sprintf(historyMessages, "\n%s \n\n", buffer);
     }
 }
@@ -337,6 +343,10 @@ void cleanup(int internet_socket)
 //Einde code uit de les//
 /////////////////////////
 
+
+/*
+* Deze functie is de Main functie voor het oproepen van de geschiedenis
+*/
 void messageHistory()
 {
     int internet_socket = init();
@@ -344,18 +354,7 @@ void messageHistory()
     cleanup(internet_socket);
 }
 
-void exMessage()
-{
-    bufferMessage[lengthOfBuffer] = '\0';
-    char message[255];
-
-    for(int i = 0, j; bufferMessage[i] != '\0'; ++i)
-    {
-
-        for(j = i; bufferMessage[j] != '\0'; ++j)
-        {
-            bufferMessage[j] = message[j + 1];
-        }
-        message[j] = '\0';
-    }
-}
+/*
+* De geschiedenis kan worden aangevuld via: view-source:https://student.pxl-ea-ict.be/chat.php?i=12102824&msg=Test
+* De geschiedenis kan worden bekeken via: view-source:https://student.pxl-ea-ict.be/history.php?i=12102824
+*/
